@@ -1,87 +1,89 @@
-# Proxmox VE 升级脚本
+# Proxmox VE Upgrade Scripts
 
-一键升级 Proxmox VE 的自动化脚本集合。
+[English](#proxmox-ve-upgrade-scripts) | [中文](README_zh.md)
 
-## 脚本列表
+Automated scripts for upgrading Proxmox VE between major versions.
 
-| 脚本 | 说明 |
-|------|------|
+## Scripts
+
+| Script | Description |
+|--------|-------------|
 | `pve7to8.sh` | Proxmox VE 7 (Bullseye) → 8 (Bookworm) |
 
-## 使用说明
+## Usage
 
-### PVE 7 → 8 升级
+### PVE 7 → 8 Upgrade
 
-#### 前置条件
+#### Prerequisites
 
-- 已运行 Proxmox VE 7.x（基于 Debian 11 Bullseye）
-- 拥有 root 权限
-- **已备份所有虚拟机和重要数据**
-- 如为集群环境，确保所有节点健康且无正在运行的 HA 迁移
+- Running Proxmox VE 7.x (Debian 11 Bullseye)
+- Root access
+- **All VMs and important data backed up**
+- For cluster environments, ensure all nodes are healthy with no active HA migrations
 
-#### 快速开始
+#### Quick Start
 
-在 PVE 节点上以 root 执行：
+Run as root on your PVE node:
 
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh)"
 ```
 
-#### 手动执行
+#### Manual Execution
 
-如果你希望先查看脚本内容再执行：
+If you prefer to review the script before running:
 
 ```bash
-# 1. 下载脚本
+# 1. Download the script
 wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh
 
-# 2. 查看脚本内容（可选）
+# 2. Review the script (optional)
 cat pve7to8.sh
 
-# 3. 以 root 执行
+# 3. Run as root
 bash pve7to8.sh
 
-# 4. 升级完成后按提示重启
+# 4. Reboot after upgrade completes
 reboot
 ```
 
-#### 脚本执行流程
+#### What the Script Does
 
-1. **环境检查** — 确认当前系统为 PVE 7 / Debian Bullseye
-2. **更新当前系统** — 确保 PVE 7 已是最新版本
-3. **运行 pve7to8 检查工具** — 官方升级前检查，需用户确认无 FAILURE 后继续
-4. **备份 APT 源** — 将当前源配置备份到 `/etc/apt/backup-pve7to8-<timestamp>/`
-5. **切换到 Bookworm 源** — 更新 Debian 源、PVE 源，移除旧源文件
-6. **更新 GPG 密钥** — 获取 Proxmox Bookworm 签名密钥
-7. **执行 dist-upgrade** — 完成系统升级
+1. **Environment check** — Verifies the system is PVE 7 / Debian Bullseye
+2. **Update current system** — Ensures PVE 7 is fully up to date
+3. **Run pve7to8 checker** — Official pre-upgrade check; requires user confirmation before proceeding
+4. **Backup APT sources** — Saves current config to `/etc/apt/backup-pve7to8-<timestamp>/`
+5. **Switch to Bookworm repos** — Updates Debian, PVE sources; removes stale repo files
+6. **Update GPG key** — Fetches the Proxmox Bookworm release key
+7. **Run dist-upgrade** — Performs the actual system upgrade
 
-#### 注意事项
+#### Important Notes
 
-- 脚本使用 `ftp.us.debian.org` 作为 Debian 镜像源，如需使用其他镜像请编辑脚本
-- 集群环境请**逐节点升级**，不要同时升级所有节点
-- 升级前务必确认 `pve7to8 --full` 检查无 FAILURE 项
-- 如有 Ceph 存储，脚本会自动更新 Ceph 源
-- enterprise 源会被自动移除（适用于无订阅用户）
+- The script uses `ftp.us.debian.org` as the Debian mirror. Edit the script if you need a different mirror.
+- For clusters, upgrade **one node at a time** — never all nodes simultaneously.
+- Ensure `pve7to8 --full` reports no FAILURE items before proceeding.
+- If Ceph storage is detected, the script automatically updates the Ceph repository.
+- The enterprise repository is removed automatically (suitable for non-subscription users).
 
-## 回滚
+## Rollback
 
-脚本会自动备份 APT 源配置。如需回滚：
+The script automatically backs up your APT source configuration. To roll back:
 
 ```bash
-# 找到备份目录
+# Find the backup directory
 ls /etc/apt/backup-pve7to8-*/
 
-# 恢复备份
+# Restore the backup
 cp /etc/apt/backup-pve7to8-<timestamp>/sources.list /etc/apt/sources.list
 cp /etc/apt/backup-pve7to8-<timestamp>/sources.list.d/* /etc/apt/sources.list.d/
 apt update
 ```
 
-> **注意：** APT 源回滚仅在 `dist-upgrade` 执行前有效。一旦系统包已升级，无法通过简单恢复源来降级系统。
+> **Note:** Rolling back APT sources is only effective before `dist-upgrade` runs. Once packages have been upgraded, restoring sources alone will not downgrade the system.
 
-## 参考文档
+## References
 
-- [Proxmox 官方升级指南: PVE 7 to 8](https://pve.proxmox.com/wiki/Upgrade_from_7_to_8)
+- [Proxmox Official Upgrade Guide: PVE 7 to 8](https://pve.proxmox.com/wiki/Upgrade_from_7_to_8)
 
 ## License
 
