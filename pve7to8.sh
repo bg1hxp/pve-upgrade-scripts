@@ -59,14 +59,14 @@ info "步骤 2/7: 运行 pve7to8 升级前检查..."
 if command -v pve7to8 &>/dev/null; then
     pve7to8 --full 2>&1 | tee /tmp/pve7to8-check.log
     warn "请检查上方输出，确认没有 FAILURE 项"
-    read -rp "是否继续升级? (y/N): " CONFIRM
+    read -rp "是否继续升级? (y/N): " CONFIRM </dev/tty
     if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
         info "用户取消升级"
         exit 0
     fi
 else
     warn "pve7to8 工具不可用，请确认已安装最新 pve-manager"
-    read -rp "是否跳过检查继续? (y/N): " CONFIRM
+    read -rp "是否跳过检查继续? (y/N): " CONFIRM </dev/tty
     if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
         exit 0
     fi

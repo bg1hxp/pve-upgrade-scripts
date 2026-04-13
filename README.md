@@ -19,14 +19,24 @@
 - **已备份所有虚拟机和重要数据**
 - 如为集群环境，确保所有节点健康且无正在运行的 HA 迁移
 
-#### 升级步骤
+#### 快速开始
+
+在 PVE 节点上以 root 执行：
+
+```bash
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh)"
+```
+
+#### 手动执行
+
+如果你希望先查看脚本内容再执行：
 
 ```bash
 # 1. 下载脚本
 wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh
 
-# 2. 赋予执行权限
-chmod +x pve7to8.sh
+# 2. 查看脚本内容（可选）
+cat pve7to8.sh
 
 # 3. 以 root 执行
 bash pve7to8.sh
