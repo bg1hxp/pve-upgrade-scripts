@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# pve7to8.sh — Proxmox VE 7 (Bullseye) -> 8 (Bookworm) 升级脚本
+# pve7to8.sh — Proxmox VE 7 (Bullseye) -> 8 (Bookworm) Upgrade Script
 #
-# 用法: bash pve7to8.sh
+# Usage: bash pve7to8.sh
 #
-# 参考: https://pve.proxmox.com/wiki/Upgrade_from_7_to_8
+# Reference: https://pve.proxmox.com/wiki/Upgrade_from_7_to_8
 #
 
 set -euo pipefail
 
 # ============================================================
-# 颜色输出
+# Color output
 # ============================================================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,116 +22,147 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 # ============================================================
-# 前置检查
+# Pre-flight checks
 # ============================================================
 
-# 必须以 root 运行
+# Must run as root
 if [[ $EUID -ne 0 ]]; then
-    error "请以 root 用户运行此脚本"
+    error "This script must be run as root"
     exit 1
 fi
 
-# 确认当前是 PVE 7 (Debian Bullseye)
-if ! grep -q 'bullseye' /etc/os-release 2>/dev/null; then
-    error "当前系统不是 Debian Bullseye (PVE 7)，中止升级"
-    exit 1
-fi
-
-# 确认 pveversion 存在
+# Verify pveversion exists
 if ! command -v pveversion &>/dev/null; then
-    error "未检测到 pveversion 命令，确认这是 Proxmox VE 节点"
+    error "pveversion not found — is this a Proxmox VE node?"
     exit 1
 fi
 
-info "当前版本: $(pveversion)"
+# Verify current system is PVE 7 (Debian Bullseye)
+if ! grep -q 'bullseye' /etc/os-release 2>/dev/null; then
+    error "Current system is not Debian Bullseye (PVE 7), aborting"
+    exit 1
+fi
+
+# Verify minimum PVE version (7.4-16+)
+CURRENT_VER=$(pveversion | grep -oP 'pve-manager/\K[0-9]+\.[0-9]+-[0-9]+' || true)
+if [[ -z "$CURRENT_VER" ]]; then
+    error "Failed to detect PVE version"
+    exit 1
+fi
+
+MAJOR_MINOR=$(echo "$CURRENT_VER" | grep -oP '^[0-9]+\.[0-9]+')
+PATCH=$(echo "$CURRENT_VER" | grep -oP '(?<=-)[0-9]+$')
+
+if ! awk "BEGIN {exit !($MAJOR_MINOR > 7.4 || ($MAJOR_MINOR == 7.4 && $PATCH >= 16))}"; then
+    error "PVE version $CURRENT_VER is too old. Minimum required: 7.4-16"
+    error "Please run 'apt update && apt dist-upgrade' first to update PVE 7"
+    exit 1
+fi
+
+info "Current version: $(pveversion)"
 
 # ============================================================
-# 步骤 1: 将 PVE 7 更新到最新
+# Step 1: Update PVE 7 to latest
 # ============================================================
-info "步骤 1/7: 将当前 PVE 7 更新到最新版本..."
-apt update
-apt dist-upgrade -y
+info "Step 1/7: Updating current PVE 7 to latest..."
+apt-get update
+apt-get dist-upgrade -y
 
 # ============================================================
-# 步骤 2: 运行 pve7to8 升级检查工具
+# Step 2: Run pve7to8 upgrade checker
 # ============================================================
-info "步骤 2/7: 运行 pve7to8 升级前检查..."
+info "Step 2/7: Running pve7to8 pre-upgrade checks..."
 if command -v pve7to8 &>/dev/null; then
     pve7to8 --full 2>&1 | tee /tmp/pve7to8-check.log
-    warn "请检查上方输出，确认没有 FAILURE 项"
-    read -rp "是否继续升级? (y/N): " CONFIRM </dev/tty
+    warn "Please review the output above — ensure there are no FAILURE items"
+    read -rp "Continue with upgrade? (y/N): " CONFIRM </dev/tty
     if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-        info "用户取消升级"
+        info "Upgrade cancelled by user"
         exit 0
     fi
 else
-    warn "pve7to8 工具不可用，请确认已安装最新 pve-manager"
-    read -rp "是否跳过检查继续? (y/N): " CONFIRM </dev/tty
+    warn "pve7to8 tool not available — ensure pve-manager is up to date"
+    read -rp "Skip checks and continue? (y/N): " CONFIRM </dev/tty
     if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
         exit 0
     fi
 fi
 
 # ============================================================
-# 步骤 3: 备份 APT 源配置
+# Step 3: Backup APT source configuration
 # ============================================================
-info "步骤 3/7: 备份当前 APT 源配置..."
+info "Step 3/7: Backing up APT source configuration..."
 BACKUP_DIR="/etc/apt/backup-pve7to8-$(date +%F-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 cp /etc/apt/sources.list "$BACKUP_DIR/"
 cp -r /etc/apt/sources.list.d/ "$BACKUP_DIR/"
-info "备份已保存至 $BACKUP_DIR"
+info "Backup saved to $BACKUP_DIR"
 
 # ============================================================
-# 步骤 4: 更新 APT 源到 Bookworm
+# Step 4: Update APT sources to Bookworm
 # ============================================================
-info "步骤 4/7: 更新 APT 源为 Bookworm..."
+info "Step 4/7: Switching APT sources to Bookworm..."
 
-# 主 Debian 源
+# Main Debian sources
 cat > /etc/apt/sources.list <<'EOF'
-deb http://ftp.us.debian.org/debian bookworm main contrib
-deb http://ftp.us.debian.org/debian bookworm-updates main contrib
+deb http://ftp.debian.org/debian bookworm main contrib
+deb http://ftp.debian.org/debian bookworm-updates main contrib
 deb http://security.debian.org/debian-security bookworm-security main contrib
 EOF
 
-# PVE no-subscription 源
+# PVE no-subscription repository
 cat > /etc/apt/sources.list.d/pve-no-subscription.list <<'EOF'
 deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription
 EOF
 
-# 移除旧的 PVE 源文件（如存在）
-rm -f /etc/apt/sources.list.d/pve-enterprise.list
+# Disable enterprise repository (comment out instead of deleting)
+if [[ -f /etc/apt/sources.list.d/pve-enterprise.list ]]; then
+    sed -i 's/^deb/#deb/' /etc/apt/sources.list.d/pve-enterprise.list
+    info "Disabled pve-enterprise repository"
+fi
+
+# Remove stale PVE 7 install repo if present
 rm -f /etc/apt/sources.list.d/pve-install-repo.list
 
-# 如有 Ceph 源也需更新
+# Update Ceph repository if present
 if [[ -f /etc/apt/sources.list.d/ceph.list ]]; then
-    warn "检测到 Ceph 源，将其更新为 Bookworm 版本"
-    sed -i 's/bullseye/bookworm/g' /etc/apt/sources.list.d/ceph.list
+    warn "Ceph repository detected — updating to Bookworm"
+    cat > /etc/apt/sources.list.d/ceph.list <<'EOF'
+# deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise
+deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription
+EOF
 fi
 
 # ============================================================
-# 步骤 5: 更新 Proxmox GPG 密钥
+# Step 5: Update Proxmox GPG key
 # ============================================================
-info "步骤 5/7: 更新 Proxmox GPG 密钥..."
+info "Step 5/7: Updating Proxmox GPG key..."
 wget -qO /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg \
     http://download.proxmox.com/debian/proxmox-release-bookworm.gpg
 
 # ============================================================
-# 步骤 6: 执行升级
+# Step 6: Perform upgrade
 # ============================================================
-info "步骤 6/7: 开始系统升级..."
-apt update
-apt dist-upgrade -y
+info "Step 6/7: Starting system upgrade (this may take a while)..."
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confold" dist-upgrade -y
 
 # ============================================================
-# 步骤 7: 完成
+# Step 7: Complete
 # ============================================================
-info "步骤 7/7: 升级完成!"
-info "新版本: $(pveversion)"
+info "Step 7/7: Upgrade complete!"
+info "New version: $(pveversion)"
 echo ""
-warn "请检查以下事项:"
-echo "  1. 运行 'pveversion' 确认版本已更新"
-echo "  2. 检查 /etc/apt/sources.list 是否正确"
-echo "  3. 确认无误后执行 reboot 重启系统"
+warn "Post-upgrade checklist:"
+echo "  1. Run 'pveversion' to confirm the version"
+echo "  2. Verify /etc/apt/sources.list is correct"
+echo "  3. Reboot the system when ready"
 echo ""
-info "建议执行: reboot"
+read -rp "Reboot now? (y/N): " REBOOT </dev/tty
+if [[ "$REBOOT" == "y" || "$REBOOT" == "Y" ]]; then
+    info "Rebooting..."
+    sleep 2
+    reboot
+else
+    warn "Reboot skipped — remember to reboot manually"
+fi

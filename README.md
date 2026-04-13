@@ -16,7 +16,7 @@ Automated scripts for upgrading Proxmox VE between major versions.
 
 #### Prerequisites
 
-- Running Proxmox VE 7.x (Debian 11 Bullseye)
+- Running Proxmox VE **7.4-16 or higher** (Debian 11 Bullseye)
 - Root access
 - **All VMs and important data backed up**
 - For cluster environments, ensure all nodes are healthy with no active HA migrations
@@ -49,21 +49,22 @@ reboot
 
 #### What the Script Does
 
-1. **Environment check** — Verifies the system is PVE 7 / Debian Bullseye
+1. **Environment check** — Verifies PVE 7 / Debian Bullseye, minimum version 7.4-16
 2. **Update current system** — Ensures PVE 7 is fully up to date
 3. **Run pve7to8 checker** — Official pre-upgrade check; requires user confirmation before proceeding
 4. **Backup APT sources** — Saves current config to `/etc/apt/backup-pve7to8-<timestamp>/`
-5. **Switch to Bookworm repos** — Updates Debian, PVE sources; removes stale repo files
+5. **Switch to Bookworm repos** — Updates Debian, PVE, Ceph sources; disables enterprise repo
 6. **Update GPG key** — Fetches the Proxmox Bookworm release key
-7. **Run dist-upgrade** — Performs the actual system upgrade
+7. **Run dist-upgrade** — Performs upgrade with `--force-confold` to keep existing configs
 
 #### Important Notes
 
-- The script uses `ftp.us.debian.org` as the Debian mirror. Edit the script if you need a different mirror.
+- The script uses `ftp.debian.org` as the Debian mirror. Edit the script if you need a different mirror.
 - For clusters, upgrade **one node at a time** — never all nodes simultaneously.
 - Ensure `pve7to8 --full` reports no FAILURE items before proceeding.
-- If Ceph storage is detected, the script automatically updates the Ceph repository.
-- The enterprise repository is removed automatically (suitable for non-subscription users).
+- If Ceph storage is detected, the script automatically updates the Ceph repository to `ceph-quincy`.
+- The enterprise repository is **commented out** (not deleted), so subscription users can re-enable it easily.
+- Uses `DEBIAN_FRONTEND=noninteractive` and `--force-confold` to avoid interactive dpkg prompts during upgrade.
 
 ## Rollback
 
