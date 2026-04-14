@@ -26,7 +26,7 @@ Automated scripts for upgrading Proxmox VE between major versions.
 Run as root on your PVE node:
 
 ```bash
-bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh)"
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/master/pve7to8.sh)"
 ```
 
 #### Manual Execution
@@ -35,7 +35,7 @@ If you prefer to review the script before running:
 
 ```bash
 # 1. Download the script
-wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh
+wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/master/pve7to8.sh
 
 # 2. Review the script (optional)
 cat pve7to8.sh

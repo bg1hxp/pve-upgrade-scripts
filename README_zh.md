@@ -26,7 +26,7 @@
 在 PVE 节点上以 root 执行：
 
 ```bash
-bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh)"
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/master/pve7to8.sh)"
 ```
 
 #### 手动执行
@@ -35,7 +35,7 @@ bash -c "$(wget -qLO - https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scri
 
 ```bash
 # 1. 下载脚本
-wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/main/pve7to8.sh
+wget https://raw.githubusercontent.com/bg1hxp/pve-upgrade-scripts/master/pve7to8.sh
 
 # 2. 查看脚本内容（可选）
 cat pve7to8.sh
